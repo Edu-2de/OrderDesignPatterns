@@ -1,5 +1,4 @@
-
-## Padrões de Projeto - Entrega 1
+### Fase 1: Padrões de Projeto 
 ## Padrão Utilizado
 
 - **Builder**
