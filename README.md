@@ -24,7 +24,8 @@ order = (OrderBuilder()
 
 ### Fase 2: Estruturais
 
-- **Decorator**  
+- **Decorator**
+  utilizando dois padrões estruturais
   Permite adicionar funcionalidades extras ao pedido (ex: embalagem para presente, desconto), sem alterar sua estrutura base.
 - **Facade**  
   Fornece uma interface simplificada para criar e processar pedidos, escondendo a complexidade dos detalhes internos (pagamento, notificação, etc).
