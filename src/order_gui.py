@@ -30,8 +30,8 @@ class PizzaApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Pizzaria - Sistema de Pedidos")
-        self.geometry("1100x700")
-        self.configure(bg="#181a1b")
+        self.geometry("1000x650")
+        self.configure(bg="#191c1f")
         self.facade = OrderProcessorFacade()
         self.order_info = {}
         self.pizza_ingredients = []
@@ -51,34 +51,85 @@ class PizzaApp(tk.Tk):
         self.frames[name].pack(fill="both", expand=True)
 
     def create_order_frame(self):
-        frame = tk.Frame(self, bg="#181a1b")
-        menu_frame = tk.Frame(frame, bg="#23272e", width=220)
-        menu_frame.pack(side="left", fill="y")
-        tk.Label(menu_frame, text="Cardápio de Pizzas", bg="#23272e", fg="#ffb347", font=("Segoe UI", 16, "bold")).pack(pady=(18, 8))
-        for pizza in MENU:
-            tk.Label(menu_frame, text=pizza, bg="#23272e", fg="#f5f6fa", font=("Segoe UI", 13)).pack(anchor="w", padx=18, pady=4)
+        frame = tk.Frame(self, bg="#191c1f")
 
-        form_frame = tk.Frame(frame, bg="#23272e")
-        form_frame.pack(side="left", fill="both", expand=True, padx=60, pady=40)
-        tk.Label(form_frame, text="Dados do Cliente", bg="#23272e", fg="#ffb347", font=("Segoe UI", 18, "bold")).pack(pady=10)
-        self.entry_name = ttk.Entry(form_frame, width=40)
+        # Header
+        header = tk.Frame(frame, bg="#23272e")
+        header.pack(fill="x")
+        tk.Label(header, text="🍕 Bem-vindo à Pizzaria!", bg="#23272e", fg="#ffb347",
+                 font=("Segoe UI", 22, "bold")).pack(pady=18)
+
+        # Main content
+        content = tk.Frame(frame, bg="#191c1f")
+        content.pack(fill="both", expand=True, padx=40, pady=20)
+
+        # Menu (left)
+        menu_frame = tk.Frame(content, bg="#23272e", width=260, bd=0, relief="flat")
+        menu_frame.pack(side="left", fill="y", padx=(0, 40))
+        tk.Label(menu_frame, text="Cardápio de Pizzas", bg="#23272e", fg="#ffb347",
+                 font=("Segoe UI", 16, "bold")).pack(pady=(18, 8))
+        for pizza in MENU:
+            lbl = tk.Label(menu_frame, text="🍕 " + pizza, bg="#23272e", fg="#f5f6fa",
+                           font=("Segoe UI", 13), anchor="w", padx=10)
+            lbl.pack(fill="x", padx=18, pady=4)
+
+        # Form (right)
+        form_frame = tk.Frame(content, bg="#23272e", bd=0, relief="flat")
+        form_frame.pack(side="left", fill="both", expand=True, padx=0, pady=0)
+
+        # Nome
+        tk.Label(form_frame, text="Dados do Cliente", bg="#23272e", fg="#ffb347",
+                 font=("Segoe UI", 18, "bold")).pack(pady=(10, 2))
+        self.entry_name = ttk.Entry(form_frame, width=38, font=("Segoe UI", 12))
         self.entry_name.pack(pady=8)
         self.entry_name.insert(0, "Nome do Cliente")
-        self.entry_address = ttk.Entry(form_frame, width=40)
+        self.entry_name.bind("<FocusIn>", lambda e: self.clear_placeholder(self.entry_name, "Nome do Cliente"))
+
+        # Endereço
+        self.entry_address = ttk.Entry(form_frame, width=38, font=("Segoe UI", 12))
         self.entry_address.pack(pady=8)
         self.entry_address.insert(0, "Endereço de Entrega")
-        tk.Label(form_frame, text="Escolha a pizza:", bg="#23272e", fg="#f5f6fa", font=("Segoe UI", 13)).pack(pady=(18, 5))
+        self.entry_address.bind("<FocusIn>", lambda e: self.clear_placeholder(self.entry_address, "Endereço de Entrega"))
+
+        # Pizza
+        pizza_box = tk.LabelFrame(form_frame, text="Escolha a pizza", bg="#23272e", fg="#ffb347",
+                                 font=("Segoe UI", 13, "bold"), bd=2, relief="groove", labelanchor="n")
+        pizza_box.pack(fill="x", pady=(18, 5), padx=10)
         self.pizza_type = tk.StringVar(value=MENU[0])
         for t in MENU:
-            ttk.Radiobutton(form_frame, text=t, variable=self.pizza_type, value=t).pack(anchor="w", padx=80)
-        tk.Label(form_frame, text="Forma de Pagamento:", bg="#23272e", fg="#f5f6fa", font=("Segoe UI", 13)).pack(pady=(18, 5))
+            ttk.Radiobutton(pizza_box, text=t, variable=self.pizza_type, value=t).pack(anchor="w", padx=18, pady=2)
+
+        # Pagamento
+        pay_box = tk.LabelFrame(form_frame, text="Forma de Pagamento", bg="#23272e", fg="#ffb347",
+                               font=("Segoe UI", 13, "bold"), bd=2, relief="groove", labelanchor="n")
+        pay_box.pack(fill="x", pady=(18, 5), padx=10)
         self.payment = tk.StringVar(value="Cartão")
-        ttk.Combobox(form_frame, textvariable=self.payment, values=["Cartão", "Pix", "Dinheiro"], width=37, state="readonly").pack(pady=5)
+        ttk.Combobox(pay_box, textvariable=self.payment, values=["Cartão", "Pix", "Dinheiro"],
+                     width=35, state="readonly", font=("Segoe UI", 12)).pack(pady=5, padx=10)
+
+        # Embalagem presente
         self.gift_wrap = tk.BooleanVar()
-        ttk.Checkbutton(form_frame, text="Embalagem para presente", variable=self.gift_wrap).pack(pady=10)
-        tk.Button(form_frame, text="Fazer Pedido", bg="#ffb347", fg="#23272e", font=("Segoe UI", 13, "bold"),
-                  command=self.go_to_kitchen).pack(pady=30)
+        gift_frame = tk.Frame(form_frame, bg="#23272e")
+        gift_frame.pack(pady=10)
+        ttk.Checkbutton(gift_frame, text="Embalagem para presente 🎁", variable=self.gift_wrap).pack()
+
+        # Botão
+        btn = tk.Button(form_frame, text="Fazer Pedido", bg="#ffb347", fg="#23272e",
+                        font=("Segoe UI", 14, "bold"), bd=0, relief="flat", activebackground="#ffd580",
+                        command=self.go_to_kitchen, cursor="hand2")
+        btn.pack(pady=30, ipadx=18, ipady=6)
+
+        # Footer
+        footer = tk.Frame(frame, bg="#23272e")
+        footer.pack(fill="x", side="bottom")
+        tk.Label(footer, text="© 2025 Pizzaria. Todos os direitos reservados.",
+                 bg="#23272e", fg="#888", font=("Segoe UI", 10)).pack(pady=6)
+
         return frame
+
+    def clear_placeholder(self, entry, text):
+        if entry.get() == text:
+            entry.delete(0, tk.END)
 
     def create_kitchen_frame(self):
         frame = tk.Frame(self, bg="#181a1b")
@@ -138,8 +189,8 @@ class PizzaApp(tk.Tk):
         pizza = self.pizza_type.get()
         payment = self.payment.get()
         gift_wrap = self.gift_wrap.get()
-        if not name or not address:
-            messagebox.showwarning("Atenção", "Preencha todos os campos!")
+        if not name or not address or name == "Nome do Cliente" or address == "Endereço de Entrega":
+            messagebox.showwarning("Atenção", "Preencha todos os campos corretamente!")
             return
         self.order_info = {
             "name": name,
