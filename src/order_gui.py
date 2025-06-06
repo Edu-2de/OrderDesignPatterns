@@ -30,8 +30,8 @@ class PizzaApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Pizzaria - Sistema de Pedidos")
-        self.geometry("1000x670")
-        self.configure(bg="#181a1b")
+        self.geometry("1100x700")
+        self.configure(bg="#191c1f")
         self.facade = OrderProcessorFacade()
         self.order_info = {}
         self.pizza_ingredients = []
@@ -70,21 +70,33 @@ class PizzaApp(tk.Tk):
         tk.Label(menu_frame, text="Cardápio de Pizzas", bg="#23272e", fg="#ffb347",
                  font=("Segoe UI", 16, "bold")).pack(pady=(18, 8))
 
-        self.menu_listbox = tk.Listbox(menu_frame, font=("Segoe UI", 13), bg="#23272e", fg="#f5f6fa",
-                                       selectbackground="#ffb347", selectforeground="#23272e", activestyle="none",
-                                       highlightthickness=0, bd=0, relief="flat", height=10, width=22)
-        for pizza, _ in MENU:
-            self.menu_listbox.insert(tk.END, pizza)
-        self.menu_listbox.pack(padx=18, pady=4, fill="x")
-        self.menu_listbox.bind("<<ListboxSelect>>", self.show_pizza_ingredients)
+        # Clean pizza menu with hover effect
+        self.menu_buttons = []
+        for idx, (pizza, ingredientes) in enumerate(MENU):
+            btn = tk.Button(
+                menu_frame,
+                text=f"🍕 {pizza}",
+                bg="#23272e",
+                fg="#f5f6fa",
+                font=("Segoe UI", 13, "bold"),
+                bd=0,
+                relief="flat",
+                anchor="w",
+                activebackground="#ffb347",
+                activeforeground="#23272e",
+                cursor="hand2",
+                command=lambda i=idx: self.select_pizza_from_menu(i)
+            )
+            btn.pack(fill="x", padx=18, pady=4)
+            btn.bind("<Enter>", lambda e, b=btn: b.config(bg="#ffb347", fg="#23272e"))
+            btn.bind("<Leave>", lambda e, b=btn: b.config(bg="#23272e", fg="#f5f6fa"))
+            self.menu_buttons.append(btn)
 
         self.ingredient_label = tk.Label(menu_frame, text="", bg="#23272e", fg="#b2bec3",
                                          font=("Segoe UI", 11), wraplength=220, justify="left")
         self.ingredient_label.pack(padx=18, pady=(10, 0), fill="x")
 
-        # Select first pizza by default
-        self.menu_listbox.selection_set(0)
-        self.show_pizza_ingredients()
+        self.select_pizza_from_menu(0)
 
         # Form (right)
         form_frame = tk.Frame(content, bg="#23272e", bd=0, relief="flat")
@@ -148,27 +160,25 @@ class PizzaApp(tk.Tk):
 
         return frame
 
-    def sync_menu_selection(self):
-        # Sync radio button with listbox
-        pizza = self.selected_pizza.get()
-        for idx, (name, _) in enumerate(MENU):
-            if name == pizza:
-                self.menu_listbox.selection_clear(0, tk.END)
-                self.menu_listbox.selection_set(idx)
-                self.menu_listbox.see(idx)
-                self.show_pizza_ingredients()
-                break
-
-    def show_pizza_ingredients(self, event=None):
-        try:
-            idx = self.menu_listbox.curselection()[0]
-        except IndexError:
-            idx = 0
+    def select_pizza_from_menu(self, idx):
         pizza, ingredientes = MENU[idx]
         self.selected_pizza.set(pizza)
         self.ingredient_label.config(
             text="Ingredientes: " + ", ".join(ingredientes)
         )
+        # Destaca botão selecionado
+        for i, btn in enumerate(self.menu_buttons):
+            if i == idx:
+                btn.config(bg="#ffb347", fg="#23272e")
+            else:
+                btn.config(bg="#23272e", fg="#f5f6fa")
+
+    def sync_menu_selection(self):
+        pizza = self.selected_pizza.get()
+        for idx, (name, _) in enumerate(MENU):
+            if name == pizza:
+                self.select_pizza_from_menu(idx)
+                break
 
     def clear_placeholder(self, entry, text):
         if entry.get() == text:
@@ -176,14 +186,25 @@ class PizzaApp(tk.Tk):
 
     def create_kitchen_frame(self):
         frame = tk.Frame(self, bg="#181a1b")
-        self.info_label = tk.Label(frame, text="", bg="#23272e", fg="#ffb347", font=("Segoe UI", 15, "bold"), anchor="w", justify="left")
-        self.info_label.pack(fill="x", padx=30, pady=20)
+        # Cardápio lateral para consulta
+        side_menu = tk.Frame(frame, bg="#23272e", width=220)
+        side_menu.pack(side="left", fill="y", padx=(0, 0), pady=0)
+        tk.Label(side_menu, text="Cardápio", bg="#23272e", fg="#ffb347",
+                 font=("Segoe UI", 15, "bold")).pack(pady=(18, 8))
+        for pizza, ingredientes in MENU:
+            lbl = tk.Label(side_menu, text=f"{pizza}\n" + ", ".join(ingredientes),
+                           bg="#23272e", fg="#f5f6fa", font=("Segoe UI", 11), anchor="w", justify="left", wraplength=180)
+            lbl.pack(fill="x", padx=14, pady=5)
+
+        # Área de montagem da pizza
         pizza_area = tk.Frame(frame, bg="#181a1b")
         pizza_area.pack(side="left", padx=40, pady=20)
         self.pizza_canvas = Canvas(pizza_area, width=350, height=350, bg="#f5e6ca", highlightthickness=2, highlightbackground="#ffb347")
         self.pizza_canvas.pack()
         self.draw_base_pizza()
         self.pizza_ingredients = []
+
+        # Ingredientes para arrastar
         ing_frame = tk.Frame(frame, bg="#23272e")
         ing_frame.pack(side="left", fill="y", padx=30)
         tk.Label(ing_frame, text="Arraste os ingredientes:", bg="#23272e", fg="#ffb347", font=("Segoe UI", 13, "bold")).pack(pady=10)
@@ -193,6 +214,9 @@ class PizzaApp(tk.Tk):
             lbl.bind("<ButtonPress-1>", lambda e, n=name, c=color: self.add_ingredient(n, c))
         tk.Button(frame, text="Escolher Embalagem", bg="#ffb347", fg="#23272e", font=("Segoe UI", 13, "bold"),
                   command=self.go_to_packaging).pack(side="bottom", pady=30)
+        # Info do pedido
+        self.info_label = tk.Label(frame, text="", bg="#23272e", fg="#ffb347", font=("Segoe UI", 15, "bold"), anchor="w", justify="left")
+        self.info_label.pack(fill="x", padx=30, pady=20)
         return frame
 
     def create_packaging_frame(self):
@@ -243,7 +267,9 @@ class PizzaApp(tk.Tk):
             "gift_wrap": gift_wrap
         }
         info = f"Cliente: {name}\nEndereço: {address}\nPizza: {pizza}\nPagamento: {payment}\nEmbalagem presente: {'Sim' if gift_wrap else 'Não'}"
-        self.info_label.config(text=info)
+        # Atualiza info_label na tela de montagem
+        if hasattr(self, "info_label"):
+            self.info_label.config(text=info)
         self.pizza_ingredients.clear()
         self.draw_base_pizza()
         self.show_frame("kitchen")
