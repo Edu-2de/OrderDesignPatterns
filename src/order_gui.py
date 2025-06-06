@@ -185,38 +185,78 @@ class PizzaApp(tk.Tk):
             entry.delete(0, tk.END)
 
     def create_kitchen_frame(self):
+        # Layout clean, aproveitamento de tela com 3 colunas
         frame = tk.Frame(self, bg="#181a1b")
-        # Cardápio lateral para consulta
+
+        # Cardápio lateral (esquerda)
         side_menu = tk.Frame(frame, bg="#23272e", width=220)
-        side_menu.pack(side="left", fill="y", padx=(0, 0), pady=0)
+        side_menu.grid(row=0, column=0, sticky="ns", padx=(0, 0), pady=0)
         tk.Label(side_menu, text="Cardápio", bg="#23272e", fg="#ffb347",
                  font=("Segoe UI", 15, "bold")).pack(pady=(18, 8))
         for pizza, ingredientes in MENU:
-            lbl = tk.Label(side_menu, text=f"{pizza}\n" + ", ".join(ingredientes),
-                           bg="#23272e", fg="#f5f6fa", font=("Segoe UI", 11), anchor="w", justify="left", wraplength=180)
-            lbl.pack(fill="x", padx=14, pady=5)
+            pizza_lbl = tk.Label(
+                side_menu,
+                text=pizza,
+                bg="#23272e",
+                fg="#ffb347",
+                font=("Segoe UI", 12, "bold"),
+                anchor="w",
+                justify="left"
+            )
+            pizza_lbl.pack(fill="x", padx=14, pady=(8, 0))
+            ing_lbl = tk.Label(
+                side_menu,
+                text="  " + ", ".join(ingredientes),
+                bg="#23272e",
+                fg="#f5f6fa",
+                font=("Segoe UI", 10),
+                anchor="w",
+                justify="left",
+                wraplength=180
+            )
+            ing_lbl.pack(fill="x", padx=18, pady=(0, 2))
 
-        # Área de montagem da pizza
-        pizza_area = tk.Frame(frame, bg="#181a1b")
-        pizza_area.pack(side="left", padx=40, pady=20)
-        self.pizza_canvas = Canvas(pizza_area, width=350, height=350, bg="#f5e6ca", highlightthickness=2, highlightbackground="#ffb347")
-        self.pizza_canvas.pack()
+        # Área central (pizza + info + botão)
+        center_area = tk.Frame(frame, bg="#181a1b")
+        center_area.grid(row=0, column=1, sticky="nsew", padx=0, pady=0)
+        self.info_label = tk.Label(center_area, text="", bg="#23272e", fg="#ffb347",
+                                   font=("Segoe UI", 14, "bold"), anchor="w", justify="left")
+        self.info_label.pack(fill="x", padx=0, pady=(10, 8))
+        pizza_canvas_frame = tk.Frame(center_area, bg="#181a1b")
+        pizza_canvas_frame.pack(expand=True)
+        self.pizza_canvas = Canvas(
+            pizza_canvas_frame, width=370, height=370,
+            bg="#f5e6ca", highlightthickness=2, highlightbackground="#ffb347"
+        )
+        self.pizza_canvas.pack(padx=10, pady=10)
         self.draw_base_pizza()
         self.pizza_ingredients = []
 
-        # Ingredientes para arrastar
-        ing_frame = tk.Frame(frame, bg="#23272e")
-        ing_frame.pack(side="left", fill="y", padx=30)
-        tk.Label(ing_frame, text="Arraste os ingredientes:", bg="#23272e", fg="#ffb347", font=("Segoe UI", 13, "bold")).pack(pady=10)
+        btn_frame = tk.Frame(center_area, bg="#181a1b")
+        btn_frame.pack(fill="x", pady=(10, 20))
+        tk.Button(
+            btn_frame, text="Escolher Embalagem", bg="#ffb347", fg="#23272e",
+            font=("Segoe UI", 13, "bold"), command=self.go_to_packaging,
+            bd=0, relief="flat", activebackground="#ffd580", cursor="hand2"
+        ).pack(ipadx=18, ipady=8)
+
+        # Ingredientes para arrastar (direita)
+        ing_frame = tk.Frame(frame, bg="#23272e", width=220)
+        ing_frame.grid(row=0, column=2, sticky="ns", padx=(0, 0), pady=0)
+        tk.Label(ing_frame, text="Ingredientes", bg="#23272e", fg="#ffb347",
+                 font=("Segoe UI", 14, "bold")).pack(pady=(18, 8))
         for name, color in INGREDIENTS:
-            lbl = tk.Label(ing_frame, text=name, bg=color, fg="#23272e", font=("Segoe UI", 12, "bold"), width=15, relief="raised")
-            lbl.pack(pady=8)
+            lbl = tk.Label(
+                ing_frame, text=name, bg=color, fg="#23272e",
+                font=("Segoe UI", 12, "bold"), width=15, relief="raised", bd=1, cursor="hand2"
+            )
+            lbl.pack(pady=8, padx=18)
             lbl.bind("<ButtonPress-1>", lambda e, n=name, c=color: self.add_ingredient(n, c))
-        tk.Button(frame, text="Escolher Embalagem", bg="#ffb347", fg="#23272e", font=("Segoe UI", 13, "bold"),
-                  command=self.go_to_packaging).pack(side="bottom", pady=30)
-        # Info do pedido
-        self.info_label = tk.Label(frame, text="", bg="#23272e", fg="#ffb347", font=("Segoe UI", 15, "bold"), anchor="w", justify="left")
-        self.info_label.pack(fill="x", padx=30, pady=20)
+
+        # Ajuste de grid para expandir centro
+        frame.grid_columnconfigure(1, weight=1)
+        frame.grid_rowconfigure(0, weight=1)
+
         return frame
 
     def create_packaging_frame(self):
