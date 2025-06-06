@@ -7,12 +7,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.order_facade import OrderProcessorFacade
 
 MENU = [
-    "Margherita",
-    "Calabresa",
-    "Quatro Queijos",
-    "Portuguesa",
-    "Frango com Catupiry",
-    "Vegetariana"
+    ("Margherita", ["Molho", "Queijo", "Tomate", "Manjericão"]),
+    ("Calabresa", ["Molho", "Queijo", "Calabresa", "Cebola"]),
+    ("Quatro Queijos", ["Molho", "Queijo", "Catupiry"]),
+    ("Portuguesa", ["Molho", "Queijo", "Presunto", "Ovo", "Cebola", "Azeitona", "Pimentão"]),
+    ("Frango com Catupiry", ["Molho", "Queijo", "Frango", "Catupiry"]),
+    ("Vegetariana", ["Molho", "Queijo", "Tomate", "Cebola", "Azeitona", "Pimentão", "Manjericão"]),
 ]
 
 INGREDIENTS = [
@@ -30,12 +30,13 @@ class PizzaApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Pizzaria - Sistema de Pedidos")
-        self.geometry("1000x650")
-        self.configure(bg="#191c1f")
+        self.geometry("1000x670")
+        self.configure(bg="#181a1b")
         self.facade = OrderProcessorFacade()
         self.order_info = {}
         self.pizza_ingredients = []
         self.drag_data = {"item": None, "offset_x": 0, "offset_y": 0}
+        self.selected_pizza = tk.StringVar(value=MENU[0][0])
         self.init_frames()
         self.show_frame("order")
 
@@ -57,21 +58,33 @@ class PizzaApp(tk.Tk):
         header = tk.Frame(frame, bg="#23272e")
         header.pack(fill="x")
         tk.Label(header, text="🍕 Bem-vindo à Pizzaria!", bg="#23272e", fg="#ffb347",
-                 font=("Segoe UI", 22, "bold")).pack(pady=18)
+                 font=("Segoe UI", 24, "bold")).pack(pady=18)
 
         # Main content
         content = tk.Frame(frame, bg="#191c1f")
-        content.pack(fill="both", expand=True, padx=40, pady=20)
+        content.pack(fill="both", expand=True, padx=0, pady=0)
 
         # Menu (left)
         menu_frame = tk.Frame(content, bg="#23272e", width=260, bd=0, relief="flat")
-        menu_frame.pack(side="left", fill="y", padx=(0, 40))
+        menu_frame.pack(side="left", fill="y", padx=(0, 0), pady=0)
         tk.Label(menu_frame, text="Cardápio de Pizzas", bg="#23272e", fg="#ffb347",
                  font=("Segoe UI", 16, "bold")).pack(pady=(18, 8))
-        for pizza in MENU:
-            lbl = tk.Label(menu_frame, text="🍕 " + pizza, bg="#23272e", fg="#f5f6fa",
-                           font=("Segoe UI", 13), anchor="w", padx=10)
-            lbl.pack(fill="x", padx=18, pady=4)
+
+        self.menu_listbox = tk.Listbox(menu_frame, font=("Segoe UI", 13), bg="#23272e", fg="#f5f6fa",
+                                       selectbackground="#ffb347", selectforeground="#23272e", activestyle="none",
+                                       highlightthickness=0, bd=0, relief="flat", height=10, width=22)
+        for pizza, _ in MENU:
+            self.menu_listbox.insert(tk.END, pizza)
+        self.menu_listbox.pack(padx=18, pady=4, fill="x")
+        self.menu_listbox.bind("<<ListboxSelect>>", self.show_pizza_ingredients)
+
+        self.ingredient_label = tk.Label(menu_frame, text="", bg="#23272e", fg="#b2bec3",
+                                         font=("Segoe UI", 11), wraplength=220, justify="left")
+        self.ingredient_label.pack(padx=18, pady=(10, 0), fill="x")
+
+        # Select first pizza by default
+        self.menu_listbox.selection_set(0)
+        self.show_pizza_ingredients()
 
         # Form (right)
         form_frame = tk.Frame(content, bg="#23272e", bd=0, relief="flat")
@@ -79,7 +92,7 @@ class PizzaApp(tk.Tk):
 
         # Nome
         tk.Label(form_frame, text="Dados do Cliente", bg="#23272e", fg="#ffb347",
-                 font=("Segoe UI", 18, "bold")).pack(pady=(10, 2))
+                 font=("Segoe UI", 18, "bold")).pack(pady=(20, 2))
         self.entry_name = ttk.Entry(form_frame, width=38, font=("Segoe UI", 12))
         self.entry_name.pack(pady=8)
         self.entry_name.insert(0, "Nome do Cliente")
@@ -91,13 +104,14 @@ class PizzaApp(tk.Tk):
         self.entry_address.insert(0, "Endereço de Entrega")
         self.entry_address.bind("<FocusIn>", lambda e: self.clear_placeholder(self.entry_address, "Endereço de Entrega"))
 
-        # Pizza
+        # Pizza - clean radio buttons
         pizza_box = tk.LabelFrame(form_frame, text="Escolha a pizza", bg="#23272e", fg="#ffb347",
                                  font=("Segoe UI", 13, "bold"), bd=2, relief="groove", labelanchor="n")
         pizza_box.pack(fill="x", pady=(18, 5), padx=10)
-        self.pizza_type = tk.StringVar(value=MENU[0])
-        for t in MENU:
-            ttk.Radiobutton(pizza_box, text=t, variable=self.pizza_type, value=t).pack(anchor="w", padx=18, pady=2)
+        for pizza, _ in MENU:
+            rb = ttk.Radiobutton(pizza_box, text=pizza, variable=self.selected_pizza, value=pizza,
+                                 style="Pizza.TRadiobutton", command=self.sync_menu_selection)
+            rb.pack(anchor="w", padx=18, pady=2)
 
         # Pagamento
         pay_box = tk.LabelFrame(form_frame, text="Forma de Pagamento", bg="#23272e", fg="#ffb347",
@@ -115,9 +129,9 @@ class PizzaApp(tk.Tk):
 
         # Botão
         btn = tk.Button(form_frame, text="Fazer Pedido", bg="#ffb347", fg="#23272e",
-                        font=("Segoe UI", 14, "bold"), bd=0, relief="flat", activebackground="#ffd580",
+                        font=("Segoe UI", 15, "bold"), bd=0, relief="flat", activebackground="#ffd580",
                         command=self.go_to_kitchen, cursor="hand2")
-        btn.pack(pady=30, ipadx=18, ipady=6)
+        btn.pack(pady=30, ipadx=18, ipady=8)
 
         # Footer
         footer = tk.Frame(frame, bg="#23272e")
@@ -125,7 +139,36 @@ class PizzaApp(tk.Tk):
         tk.Label(footer, text="© 2025 Pizzaria. Todos os direitos reservados.",
                  bg="#23272e", fg="#888", font=("Segoe UI", 10)).pack(pady=6)
 
+        # Custom style for clean radio
+        style = ttk.Style()
+        style.configure("Pizza.TRadiobutton", background="#23272e", foreground="#f5f6fa", font=("Segoe UI", 12), indicatorcolor="#ffb347")
+        style.map("Pizza.TRadiobutton",
+                  background=[("active", "#23272e")],
+                  foreground=[("active", "#ffb347")])
+
         return frame
+
+    def sync_menu_selection(self):
+        # Sync radio button with listbox
+        pizza = self.selected_pizza.get()
+        for idx, (name, _) in enumerate(MENU):
+            if name == pizza:
+                self.menu_listbox.selection_clear(0, tk.END)
+                self.menu_listbox.selection_set(idx)
+                self.menu_listbox.see(idx)
+                self.show_pizza_ingredients()
+                break
+
+    def show_pizza_ingredients(self, event=None):
+        try:
+            idx = self.menu_listbox.curselection()[0]
+        except IndexError:
+            idx = 0
+        pizza, ingredientes = MENU[idx]
+        self.selected_pizza.set(pizza)
+        self.ingredient_label.config(
+            text="Ingredientes: " + ", ".join(ingredientes)
+        )
 
     def clear_placeholder(self, entry, text):
         if entry.get() == text:
@@ -186,7 +229,7 @@ class PizzaApp(tk.Tk):
     def go_to_kitchen(self):
         name = self.entry_name.get().strip()
         address = self.entry_address.get().strip()
-        pizza = self.pizza_type.get()
+        pizza = self.selected_pizza.get()
         payment = self.payment.get()
         gift_wrap = self.gift_wrap.get()
         if not name or not address or name == "Nome do Cliente" or address == "Endereço de Entrega":
