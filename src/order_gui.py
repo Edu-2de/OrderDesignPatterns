@@ -1,113 +1,311 @@
 import sys
 import os
 import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
+from tkinter import ttk, messagebox, Canvas
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.order_facade import OrderProcessorFacade
 
-class OrderApp(tk.Tk):
+MENU = [
+    "Margherita",
+    "Calabresa",
+    "Quatro Queijos",
+    "Portuguesa",
+    "Frango com Catupiry",
+    "Vegetariana"
+]
+
+INGREDIENTS = [
+    ("Calabresa", "#d7263d"),
+    ("Tomate", "#ff7f50"),
+    ("Azeitona", "#4e944f"),
+    ("Cebola", "#f7d6e0"),
+    ("Manjericão", "#2e8b57"),
+    ("Frango", "#f5c16c"),
+    ("Catupiry", "#fffbe6"),
+    ("Pimentão", "#8fd19e"),
+]
+
+class PizzaApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Order Design Patterns - Sistema de Pedidos")
-        self.geometry("540x420")
-        self.resizable(False, False)
+        self.title("Pizzaria - Sistema de Pedidos")
+        self.geometry("1100x700")
+        self.configure(bg="#181a1b")
         self.facade = OrderProcessorFacade()
-        self.create_widgets()
-        self.order_history = []
+        self.order_info = {}
+        self.pizza_ingredients = []
+        self.drag_data = {"item": None, "offset_x": 0, "offset_y": 0}
+        self.init_frames()
+        self.show_frame("order")
 
-    def create_widgets(self):
-        # Frame do formulário
-        form_frame = ttk.LabelFrame(self, text="Novo Pedido", padding=(15, 10))
-        form_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+    def init_frames(self):
+        self.frames = {}
+        self.frames["order"] = self.create_order_frame()
+        self.frames["kitchen"] = self.create_kitchen_frame()
+        self.frames["packaging"] = self.create_packaging_frame()
 
-        # Cliente
-        ttk.Label(form_frame, text="Cliente:").grid(row=0, column=0, sticky="e")
-        self.entry_customer = ttk.Entry(form_frame, width=30)
-        self.entry_customer.grid(row=0, column=1, padx=5, pady=3)
+    def show_frame(self, name):
+        for f in self.frames.values():
+            f.pack_forget()
+        self.frames[name].pack(fill="both", expand=True)
 
-        # Itens
-        ttk.Label(form_frame, text="Itens (separados por vírgula):").grid(row=1, column=0, sticky="e")
-        self.entry_items = ttk.Entry(form_frame, width=30)
-        self.entry_items.grid(row=1, column=1, padx=5, pady=3)
+    def create_order_frame(self):
+        frame = tk.Frame(self, bg="#181a1b")
+        menu_frame = tk.Frame(frame, bg="#23272e", width=220)
+        menu_frame.pack(side="left", fill="y")
+        tk.Label(menu_frame, text="Cardápio de Pizzas", bg="#23272e", fg="#ffb347", font=("Segoe UI", 16, "bold")).pack(pady=(18, 8))
+        for pizza in MENU:
+            tk.Label(menu_frame, text=pizza, bg="#23272e", fg="#f5f6fa", font=("Segoe UI", 13)).pack(anchor="w", padx=18, pady=4)
 
-        # Endereço
-        ttk.Label(form_frame, text="Endereço:").grid(row=2, column=0, sticky="e")
-        self.entry_address = ttk.Entry(form_frame, width=30)
-        self.entry_address.grid(row=2, column=1, padx=5, pady=3)
+        form_frame = tk.Frame(frame, bg="#23272e")
+        form_frame.pack(side="left", fill="both", expand=True, padx=60, pady=40)
+        tk.Label(form_frame, text="Dados do Cliente", bg="#23272e", fg="#ffb347", font=("Segoe UI", 18, "bold")).pack(pady=10)
+        self.entry_name = ttk.Entry(form_frame, width=40)
+        self.entry_name.pack(pady=8)
+        self.entry_name.insert(0, "Nome do Cliente")
+        self.entry_address = ttk.Entry(form_frame, width=40)
+        self.entry_address.pack(pady=8)
+        self.entry_address.insert(0, "Endereço de Entrega")
+        tk.Label(form_frame, text="Escolha a pizza:", bg="#23272e", fg="#f5f6fa", font=("Segoe UI", 13)).pack(pady=(18, 5))
+        self.pizza_type = tk.StringVar(value=MENU[0])
+        for t in MENU:
+            ttk.Radiobutton(form_frame, text=t, variable=self.pizza_type, value=t).pack(anchor="w", padx=80)
+        tk.Label(form_frame, text="Forma de Pagamento:", bg="#23272e", fg="#f5f6fa", font=("Segoe UI", 13)).pack(pady=(18, 5))
+        self.payment = tk.StringVar(value="Cartão")
+        ttk.Combobox(form_frame, textvariable=self.payment, values=["Cartão", "Pix", "Dinheiro"], width=37, state="readonly").pack(pady=5)
+        self.gift_wrap = tk.BooleanVar()
+        ttk.Checkbutton(form_frame, text="Embalagem para presente", variable=self.gift_wrap).pack(pady=10)
+        tk.Button(form_frame, text="Fazer Pedido", bg="#ffb347", fg="#23272e", font=("Segoe UI", 13, "bold"),
+                  command=self.go_to_kitchen).pack(pady=30)
+        return frame
 
-        # Pagamento
-        ttk.Label(form_frame, text="Pagamento:").grid(row=3, column=0, sticky="e")
-        self.payment_var = tk.StringVar()
-        self.combo_payment = ttk.Combobox(form_frame, textvariable=self.payment_var, values=["Cartão", "Pix", "Dinheiro"], state="readonly", width=28)
-        self.combo_payment.grid(row=3, column=1, padx=5, pady=3)
-        self.combo_payment.current(0)
+    def create_kitchen_frame(self):
+        frame = tk.Frame(self, bg="#181a1b")
+        self.info_label = tk.Label(frame, text="", bg="#23272e", fg="#ffb347", font=("Segoe UI", 15, "bold"), anchor="w", justify="left")
+        self.info_label.pack(fill="x", padx=30, pady=20)
+        pizza_area = tk.Frame(frame, bg="#181a1b")
+        pizza_area.pack(side="left", padx=40, pady=20)
+        self.pizza_canvas = Canvas(pizza_area, width=350, height=350, bg="#f5e6ca", highlightthickness=2, highlightbackground="#ffb347")
+        self.pizza_canvas.pack()
+        self.draw_base_pizza()
+        self.pizza_ingredients = []
+        ing_frame = tk.Frame(frame, bg="#23272e")
+        ing_frame.pack(side="left", fill="y", padx=30)
+        tk.Label(ing_frame, text="Arraste os ingredientes:", bg="#23272e", fg="#ffb347", font=("Segoe UI", 13, "bold")).pack(pady=10)
+        for name, color in INGREDIENTS:
+            lbl = tk.Label(ing_frame, text=name, bg=color, fg="#23272e", font=("Segoe UI", 12, "bold"), width=15, relief="raised")
+            lbl.pack(pady=8)
+            lbl.bind("<ButtonPress-1>", lambda e, n=name, c=color: self.add_ingredient(n, c))
+        tk.Button(frame, text="Escolher Embalagem", bg="#ffb347", fg="#23272e", font=("Segoe UI", 13, "bold"),
+                  command=self.go_to_packaging).pack(side="bottom", pady=30)
+        return frame
 
-        # Gift wrap e desconto
-        self.var_gift_wrap = tk.BooleanVar()
-        ttk.Checkbutton(form_frame, text="Embalagem para presente", variable=self.var_gift_wrap).grid(row=4, column=1, sticky="w", pady=3)
+    def create_packaging_frame(self):
+        frame = tk.Frame(self, bg="#181a1b")
+        tk.Label(frame, text="Escolha a Embalagem", bg="#181a1b", fg="#ffb347", font=("Segoe UI", 18, "bold")).pack(pady=20)
+        self.packaging_canvas = Canvas(frame, width=800, height=400, bg="#23272e", highlightthickness=0)
+        self.packaging_canvas.pack(pady=20)
+        # Packaging areas
+        self.packaging_canvas.create_rectangle(100, 100, 300, 300, fill="#ffe066", outline="#e1b12c", width=4)
+        self.packaging_canvas.create_text(200, 320, text="Normal", fill="#f5f6fa", font=("Segoe UI", 14, "bold"))
+        self.packaging_canvas.create_rectangle(500, 100, 700, 300, fill="#ffe066", outline="#ff69b4", width=4)
+        self.packaging_canvas.create_text(600, 320, text="Presente", fill="#ff69b4", font=("Segoe UI", 14, "bold"))
+        # Pizza to drag
+        self.pizza_drag = self.packaging_canvas.create_oval(350, 180, 450, 280, fill="#ffe066", outline="#e1b12c", width=8)
+        self.packaging_canvas.tag_bind(self.pizza_drag, "<B1-Motion>", self.move_pizza_drag)
+        self.packaging_canvas.tag_bind(self.pizza_drag, "<ButtonRelease-1>", self.check_packaging)
+        self.selected_packaging = None
+        return frame
 
-        ttk.Label(form_frame, text="Desconto (%):").grid(row=5, column=0, sticky="e")
-        self.entry_discount = ttk.Entry(form_frame, width=10)
-        self.entry_discount.grid(row=5, column=1, sticky="w", padx=5, pady=3)
+    def draw_base_pizza(self):
+        self.pizza_canvas.delete("all")
+        # Massa
+        self.pizza_canvas.create_oval(25, 25, 325, 325, fill="#ffe066", outline="#e1b12c", width=8)
+        # Molho (sempre presente)
+        self.pizza_canvas.create_oval(50, 50, 300, 300, fill="#e74c3c", outline="", width=0, tags="molho")
+        # Queijo (sempre presente, como linhas)
+        for i in range(20):
+            x1 = 60 + (i * 10) % 200
+            y1 = 60 + ((i * 23) % 200)
+            x2 = x1 + 40
+            y2 = y1 + 10
+            self.pizza_canvas.create_line(x1, y1, x2, y2, fill="#fffbe6", width=3, tags="queijo")
 
-        # Botão de criar pedido
-        ttk.Button(form_frame, text="Criar Pedido", command=self.process_order).grid(row=6, column=0, columnspan=2, pady=10)
-
-        # Frame do histórico
-        history_frame = ttk.LabelFrame(self, text="Histórico de Pedidos", padding=(10, 5))
-        history_frame.grid(row=1, column=0, padx=10, pady=5, sticky="nsew")
-
-        self.txt_history = scrolledtext.ScrolledText(history_frame, height=8, width=62, state="disabled", font=("Consolas", 9))
-        self.txt_history.pack(fill="both", expand=True)
-
-    def process_order(self):
-        customer = self.entry_customer.get().strip()
-        items = self.entry_items.get().strip()
+    def go_to_kitchen(self):
+        name = self.entry_name.get().strip()
         address = self.entry_address.get().strip()
-        payment = self.payment_var.get()
-        gift_wrap = self.var_gift_wrap.get()
-        discount = self.entry_discount.get().strip()
-
-        # Validação básica
-        if not customer or not items or not address or not payment:
-            messagebox.showwarning("Campos obrigatórios", "Preencha todos os campos obrigatórios!")
+        pizza = self.pizza_type.get()
+        payment = self.payment.get()
+        gift_wrap = self.gift_wrap.get()
+        if not name or not address:
+            messagebox.showwarning("Atenção", "Preencha todos os campos!")
             return
+        self.order_info = {
+            "name": name,
+            "address": address,
+            "pizza": pizza,
+            "payment": payment,
+            "gift_wrap": gift_wrap
+        }
+        info = f"Cliente: {name}\nEndereço: {address}\nPizza: {pizza}\nPagamento: {payment}\nEmbalagem presente: {'Sim' if gift_wrap else 'Não'}"
+        self.info_label.config(text=info)
+        self.pizza_ingredients.clear()
+        self.draw_base_pizza()
+        self.show_frame("kitchen")
 
-        try:
-            items_list = [item.strip() for item in items.split(",") if item.strip()]
-            discount_val = int(discount) if discount else None
-            order = self.facade.criar_e_processar_pedido(
-                customer=customer,
-                items=items_list,
-                address=address,
-                payment=payment,
-                gift_wrap=gift_wrap,
-                discount=discount_val
-            )
-            self.show_order(order)
-            self.add_to_history(order)
-            self.clear_form()
-        except Exception as e:
-            messagebox.showerror("Erro ao criar pedido", str(e))
+    def add_ingredient(self, name, color):
+        # Adiciona ingrediente visualmente realista e permite arrastar/remover
+        items = []
+        if name == "Calabresa":
+            for i in range(5):
+                x = 120 + (i * 25) % 100
+                y = 120 + ((i * 17) % 100)
+                circ = self.pizza_canvas.create_oval(x, y, x+30, y+30, fill=color, outline="#a71d31", width=2)
+                self.setup_drag_and_remove(circ, name)
+                items.append(circ)
+        elif name == "Tomate":
+            for i in range(3):
+                x = 150 + (i * 30) % 80
+                y = 160 + ((i * 27) % 80)
+                circ = self.pizza_canvas.create_oval(x, y, x+25, y+25, fill=color, outline="#c0392b", width=2)
+                self.setup_drag_and_remove(circ, name)
+                items.append(circ)
+        elif name == "Azeitona":
+            for i in range(6):
+                x = 110 + (i * 30) % 120
+                y = 110 + ((i * 19) % 120)
+                circ = self.pizza_canvas.create_oval(x, y, x+12, y+12, fill=color, outline="#23272e", width=1)
+                self.setup_drag_and_remove(circ, name)
+                items.append(circ)
+        elif name == "Cebola":
+            for i in range(4):
+                x = 130 + (i * 20) % 80
+                y = 130 + ((i * 15) % 80)
+                arc = self.pizza_canvas.create_arc(x, y, x+40, y+40, start=30, extent=120, style=tk.ARC, outline=color, width=3)
+                self.setup_drag_and_remove(arc, name)
+                items.append(arc)
+        elif name == "Manjericão":
+            for i in range(3):
+                x = 170 + (i * 30) % 60
+                y = 120 + ((i * 23) % 60)
+                leaf = self.pizza_canvas.create_polygon(
+                    x, y, x+10, y+20, x-10, y+20, fill=color, outline="#145a32", width=2
+                )
+                self.setup_drag_and_remove(leaf, name)
+                items.append(leaf)
+        elif name == "Frango":
+            for i in range(4):
+                x = 140 + (i * 25) % 80
+                y = 180 + ((i * 17) % 80)
+                rect = self.pizza_canvas.create_rectangle(x, y, x+18, y+10, fill=color, outline="#b9770e", width=1)
+                self.setup_drag_and_remove(rect, name)
+                items.append(rect)
+        elif name == "Catupiry":
+            for i in range(4):
+                x = 160 + (i * 18) % 70
+                y = 140 + ((i * 21) % 70)
+                circ = self.pizza_canvas.create_oval(x, y, x+18, y+18, fill=color, outline="#e1e1e1", width=1)
+                self.setup_drag_and_remove(circ, name)
+                items.append(circ)
+        elif name == "Pimentão":
+            for i in range(3):
+                x1 = 120 + (i * 30) % 80
+                y1 = 200 + ((i * 17) % 80)
+                x2 = x1 + 40
+                y2 = y1 + 5
+                line = self.pizza_canvas.create_line(x1, y1, x2, y2, fill=color, width=5)
+                self.setup_drag_and_remove(line, name)
+                items.append(line)
+        if items:
+            self.pizza_ingredients.append((name, items))
 
-    def show_order(self, order):
-        messagebox.showinfo("Pedido Criado", f"Pedido criado com sucesso!\n\n{order}")
+    def setup_drag_and_remove(self, item, name):
+        # Arrastar
+        self.pizza_canvas.tag_bind(item, "<ButtonPress-1>", lambda e, i=item: self.start_drag_ingredient(e, i))
+        self.pizza_canvas.tag_bind(item, "<B1-Motion>", lambda e, i=item: self.drag_ingredient(e, i))
+        # Remover com duplo clique
+        self.pizza_canvas.tag_bind(item, "<Double-Button-1>", lambda e, i=item, n=name: self.remove_ingredient(i, n))
 
-    def add_to_history(self, order):
-        self.txt_history.config(state="normal")
-        self.txt_history.insert("end", f"{order}\n{'-'*60}\n")
-        self.txt_history.see("end")
-        self.txt_history.config(state="disabled")
+    def start_drag_ingredient(self, event, item):
+        self.drag_data["item"] = item
+        self.drag_data["offset_x"] = event.x - self.pizza_canvas.coords(item)[0]
+        self.drag_data["offset_y"] = event.y - self.pizza_canvas.coords(item)[1]
 
-    def clear_form(self):
-        self.entry_customer.delete(0, "end")
-        self.entry_items.delete(0, "end")
-        self.entry_address.delete(0, "end")
-        self.combo_payment.current(0)
-        self.var_gift_wrap.set(False)
-        self.entry_discount.delete(0, "end")
+    def drag_ingredient(self, event, item):
+        coords = self.pizza_canvas.coords(item)
+        w = coords[2] - coords[0] if len(coords) == 4 else 0
+        h = coords[3] - coords[1] if len(coords) == 4 else 0
+        if len(coords) == 4:
+            self.pizza_canvas.coords(item, event.x, event.y, event.x + w, event.y + h)
+        elif len(coords) == 6:  # polygon
+            dx = event.x - coords[0]
+            dy = event.y - coords[1]
+            new_coords = []
+            for i in range(0, len(coords), 2):
+                new_coords.append(coords[i] + dx)
+                new_coords.append(coords[i+1] + dy)
+            self.pizza_canvas.coords(item, *new_coords)
+        # Para linhas/arcos, lógica similar pode ser adicionada se necessário
+
+    def remove_ingredient(self, item, name):
+        self.pizza_canvas.delete(item)
+        # Remove do pizza_ingredients
+        for ing in self.pizza_ingredients:
+            if ing[0] == name and item in ing[1]:
+                ing[1].remove(item)
+        # Remove entradas vazias
+        self.pizza_ingredients = [ing for ing in self.pizza_ingredients if ing[1]]
+
+    def go_to_packaging(self):
+        self.show_frame("packaging")
+
+    def move_pizza_drag(self, event):
+        x, y = event.x, event.y
+        self.packaging_canvas.coords(self.pizza_drag, x-50, y-50, x+50, y+50)
+
+    def check_packaging(self, event):
+        x, y = event.x, event.y
+        # Normal: dentro do retângulo 100,100,300,300
+        # Presente: dentro do retângulo 500,100,700,300
+        if 100 < x < 300 and 100 < y < 300:
+            self.selected_packaging = "normal"
+            self.finish_order()
+        elif 500 < x < 700 and 100 < y < 300:
+            self.selected_packaging = "gift"
+            self.finish_order()
+        else:
+            messagebox.showinfo("Atenção", "Arraste a pizza para uma das embalagens!")
+
+    def finish_order(self):
+        # Sempre inclui molho e queijo
+        ingredientes = ["Molho", "Queijo"]
+        for n, items in self.pizza_ingredients:
+            if n not in ingredientes:
+                ingredientes.append(n)
+        info = self.order_info
+        gift_wrap = info.get("gift_wrap") or self.selected_packaging == "gift"
+        order = self.facade.criar_e_processar_pedido(
+            customer=info["name"],
+            items=[info["pizza"]],
+            address=info["address"],
+            payment=info["payment"],
+            gift_wrap=gift_wrap
+        )
+        msg = (
+            f"🎉 Pedido Finalizado! 🎉\n\n"
+            f"Cliente: {info['name']}\n"
+            f"Endereço: {info['address']}\n"
+            f"Pizza: {info['pizza']}\n"
+            f"Pagamento: {info['payment']}\n"
+            f"Ingredientes: {', '.join(ingredientes)}\n"
+            f"Embalagem: {'Presente 🎁' if gift_wrap else 'Normal'}\n\n"
+            f"Resumo do pedido:\n{order}\n\n"
+            f"Obrigado por pedir conosco! 🍕"
+        )
+        messagebox.showinfo("Resumo do Pedido", msg)
+        self.destroy()
 
 if __name__ == "__main__":
-    app = OrderApp()
+    app = PizzaApp()
     app.mainloop()
