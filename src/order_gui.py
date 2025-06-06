@@ -263,13 +263,15 @@ class PizzaApp(tk.Tk):
         tk.Label(frame, text="Escolha a Embalagem", bg="#181a1b", fg="#ffb347", font=("Segoe UI", 18, "bold")).pack(pady=20)
         self.packaging_canvas = Canvas(frame, width=800, height=400, bg="#23272e", highlightthickness=0)
         self.packaging_canvas.pack(pady=20)
-        self.packaging_canvas.create_rectangle(100, 100, 300, 300, fill="#ffe066", outline="#e1b12c", width=4)
+        self.packaging_canvas.create_rectangle(100, 100, 300, 300, fill="#ffe066", outline="#e1b12c", width=4, tags="normal_box")
         self.packaging_canvas.create_text(200, 320, text="Normal", fill="#f5f6fa", font=("Segoe UI", 14, "bold"))
-        self.packaging_canvas.create_rectangle(500, 100, 700, 300, fill="#ffe066", outline="#ff69b4", width=4)
+        self.packaging_canvas.create_rectangle(500, 100, 700, 300, fill="#ffe066", outline="#ff69b4", width=4, tags="gift_box")
         self.packaging_canvas.create_text(600, 320, text="Presente", fill="#ff69b4", font=("Segoe UI", 14, "bold"))
-        self.pizza_drag = self.packaging_canvas.create_oval(350, 180, 450, 280, fill="#ffe066", outline="#e1b12c", width=8)
-        self.packaging_canvas.tag_bind(self.pizza_drag, "<B1-Motion>", self.move_pizza_drag)
-        self.packaging_canvas.tag_bind(self.pizza_drag, "<ButtonRelease-1>", self.check_packaging)
+        # Pizza desenhada no centro
+        self.pizza_img_group = []
+        self.pizza_drag = self.packaging_canvas.create_oval(350, 180, 450, 280, fill="#ffe066", outline="#e1b12c", width=8, tags="pizza_drag")
+        self.packaging_canvas.tag_bind("pizza_drag", "<B1-Motion>", self.move_pizza_drag)
+        self.packaging_canvas.tag_bind("pizza_drag", "<ButtonRelease-1>", self.check_packaging)
         self.selected_packaging = None
         return frame
 
@@ -432,7 +434,6 @@ class PizzaApp(tk.Tk):
                 self.cutting_canvas.create_polygon(*coords, fill=opts["fill"][-1], outline=opts["outline"][-1], width=int(opts["width"][-1]))
             elif item_type == "line":
                 self.cutting_canvas.create_line(*coords, fill=opts["fill"][-1], width=int(opts["width"][-1]))
-
         self.draw_cuts_on_cutting_canvas()
         self.slices_var.trace_add("write", lambda *args: self.draw_cuts_on_cutting_canvas())
 
@@ -445,25 +446,72 @@ class PizzaApp(tk.Tk):
             angle = (360 / slices) * i
             x = cx + r * math.cos(math.radians(angle))
             y = cy + r * math.sin(math.radians(angle))
-            self.cutting_canvas.create_line(cx, cy, x, y, fill="#a71d31", width=4, tags="cuts")
+            # Traço preto para indicar corte
+            self.cutting_canvas.create_line(cx, cy, x, y, fill="black", width=4, tags="cuts")
 
     def go_to_packaging(self):
         self.show_frame("packaging")
         self.packaging_canvas.delete("pizza_img")
-        self.draw_base_pizza(self.packaging_canvas)
-        # Redesenha ingredientes
+        # Centraliza a pizza na caixa de embalagem
+        pizza_offset_x = 200 - 175  # centro da caixa - centro da pizza
+        pizza_offset_y = 200 - 175
+
+        # Desenha miniatura da pizza feita pelo usuário (em vez de pizza vazia)
+        self.mini_pizza_items = []
+        # Base da pizza
+        base = self.packaging_canvas.create_oval(
+            25 + pizza_offset_x, 25 + pizza_offset_y, 325 + pizza_offset_x, 325 + pizza_offset_y,
+            fill="#ffe066", outline="#e1b12c", width=8, tags="pizza_img"
+        )
+        molho = self.packaging_canvas.create_oval(
+            50 + pizza_offset_x, 50 + pizza_offset_y, 300 + pizza_offset_x, 300 + pizza_offset_y,
+            fill="#e74c3c", outline="", width=0, tags="pizza_img"
+        )
+        self.mini_pizza_items.extend([base, molho])
+        for i in range(20):
+            x1 = 60 + (i * 10) % 200 + pizza_offset_x
+            y1 = 60 + ((i * 23) % 200) + pizza_offset_y
+            x2 = x1 + 40
+            y2 = y1 + 10
+            queijo = self.packaging_canvas.create_line(
+                x1, y1, x2, y2, fill="#fffbe6", width=3, tags="pizza_img"
+            )
+            self.mini_pizza_items.append(queijo)
+
+        # Redesenha ingredientes da pizza feita pelo usuário
         if self.saved_pizza_snapshot:
             for item_type, coords, opts in self.saved_pizza_snapshot:
+                adj_coords = []
+                for idx, val in enumerate(coords):
+                    if idx % 2 == 0:
+                        adj_coords.append(val + pizza_offset_x)
+                    else:
+                        adj_coords.append(val + pizza_offset_y)
                 if item_type == "oval":
-                    self.packaging_canvas.create_oval(*coords, fill=opts["fill"][-1], outline=opts["outline"][-1], width=int(opts["width"][-1]), tags="pizza_img")
+                    item = self.packaging_canvas.create_oval(
+                        *adj_coords, fill=opts["fill"][-1], outline=opts["outline"][-1],
+                        width=int(opts["width"][-1]), tags="pizza_img"
+                    )
                 elif item_type == "arc":
-                    self.packaging_canvas.create_arc(*coords, start=int(opts["start"][-1]), extent=int(opts["extent"][-1]),
-                                                     style=opts["style"][-1], outline=opts["outline"][-1], width=int(opts["width"][-1]), tags="pizza_img")
+                    item = self.packaging_canvas.create_arc(
+                        *adj_coords, start=int(opts["start"][-1]), extent=int(opts["extent"][-1]),
+                        style=opts["style"][-1], outline=opts["outline"][-1],
+                        width=int(opts["width"][-1]), tags="pizza_img"
+                    )
                 elif item_type == "polygon":
-                    self.packaging_canvas.create_polygon(*coords, fill=opts["fill"][-1], outline=opts["outline"][-1], width=int(opts["width"][-1]), tags="pizza_img")
+                    item = self.packaging_canvas.create_polygon(
+                        *adj_coords, fill=opts["fill"][-1], outline=opts["outline"][-1],
+                        width=int(opts["width"][-1]), tags="pizza_img"
+                    )
                 elif item_type == "line":
-                    self.packaging_canvas.create_line(*coords, fill=opts["fill"][-1], width=int(opts["width"][-1]), tags="pizza_img")
-        # Desenha cortes
+                    item = self.packaging_canvas.create_line(
+                        *adj_coords, fill=opts["fill"][-1], width=int(opts["width"][-1]), tags="pizza_img"
+                    )
+                else:
+                    continue
+                self.mini_pizza_items.append(item)
+
+        # Desenha cortes em preto
         slices = self.slices_var.get() if hasattr(self, "slices_var") else 4
         cx, cy, r = 200, 200, 150
         import math
@@ -471,14 +519,39 @@ class PizzaApp(tk.Tk):
             angle = (360 / slices) * i
             x = cx + r * math.cos(math.radians(angle))
             y = cy + r * math.sin(math.radians(angle))
-            self.packaging_canvas.create_line(cx, cy, x, y, fill="#a71d31", width=4, tags="pizza_img")
+            cut = self.packaging_canvas.create_line(cx, cy, x, y, fill="black", width=4, tags="pizza_img")
+            self.mini_pizza_items.append(cut)
+
+        # Cria a miniatura da pizza como um grupo arrastável
+        # Calcula bounding box da pizza
+        self.mini_pizza_bbox = [25 + pizza_offset_x, 25 + pizza_offset_y, 325 + pizza_offset_x, 325 + pizza_offset_y]
+        # Cria um oval invisível para servir de "alça" de arrasto
+        self.pizza_drag = self.packaging_canvas.create_oval(
+            *self.mini_pizza_bbox, outline="", fill="", tags="pizza_drag"
+        )
+        self.packaging_canvas.tag_bind("pizza_drag", "<B1-Motion>", self.move_pizza_drag)
+        self.packaging_canvas.tag_bind("pizza_drag", "<ButtonRelease-1>", self.check_packaging)
+        self.packaging_canvas.tag_raise("pizza_drag")
 
     def move_pizza_drag(self, event):
+        # Move todos os itens da miniatura da pizza junto com o oval invisível
         x, y = event.x, event.y
-        self.packaging_canvas.coords(self.pizza_drag, x-50, y-50, x+50, y+50)
+        # Calcula o centro atual da pizza
+        bbox = self.packaging_canvas.coords(self.pizza_drag)
+        cx = (bbox[0] + bbox[2]) / 2
+        cy = (bbox[1] + bbox[3]) / 2
+        dx = x - cx
+        dy = y - cy
+        # Move todos os itens da pizza_img e o oval invisível
+        for item in self.packaging_canvas.find_withtag("pizza_img"):
+            self.packaging_canvas.move(item, dx, dy)
+        self.packaging_canvas.move(self.pizza_drag, dx, dy)
 
     def check_packaging(self, event):
-        x, y = event.x, event.y
+        # Checa onde está o centro da pizza_drag
+        coords = self.packaging_canvas.coords(self.pizza_drag)
+        x = (coords[0] + coords[2]) / 2
+        y = (coords[1] + coords[3]) / 2
         if 100 < x < 300 and 100 < y < 300:
             self.selected_packaging = "normal"
             self.finish_order()
