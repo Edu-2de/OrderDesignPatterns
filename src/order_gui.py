@@ -37,6 +37,8 @@ class PizzaApp(tk.Tk):
         self.pizza_ingredients = []
         self.drag_data = {"item": None, "offset_x": 0, "offset_y": 0}
         self.selected_pizza = tk.StringVar(value=MENU[0][0])
+        self.saved_pizza_snapshot = None
+        self.slices_var = tk.IntVar(value=4)
         self.init_frames()
         self.show_frame("order")
 
@@ -44,6 +46,7 @@ class PizzaApp(tk.Tk):
         self.frames = {}
         self.frames["order"] = self.create_order_frame()
         self.frames["kitchen"] = self.create_kitchen_frame()
+        self.frames["cutting"] = self.create_cutting_frame()
         self.frames["packaging"] = self.create_packaging_frame()
 
     def show_frame(self, name):
@@ -53,7 +56,6 @@ class PizzaApp(tk.Tk):
 
     def create_order_frame(self):
         frame = tk.Frame(self, bg="#191c1f")
-
         # Header
         header = tk.Frame(frame, bg="#23272e")
         header.pack(fill="x")
@@ -70,7 +72,6 @@ class PizzaApp(tk.Tk):
         tk.Label(menu_frame, text="Cardápio de Pizzas", bg="#23272e", fg="#ffb347",
                  font=("Segoe UI", 16, "bold")).pack(pady=(18, 8))
 
-        # Clean pizza menu with hover effect
         self.menu_buttons = []
         for idx, (pizza, ingredientes) in enumerate(MENU):
             btn = tk.Button(
@@ -102,7 +103,6 @@ class PizzaApp(tk.Tk):
         form_frame = tk.Frame(content, bg="#23272e", bd=0, relief="flat")
         form_frame.pack(side="left", fill="both", expand=True, padx=0, pady=0)
 
-        # Nome
         tk.Label(form_frame, text="Dados do Cliente", bg="#23272e", fg="#ffb347",
                  font=("Segoe UI", 18, "bold")).pack(pady=(20, 2))
         self.entry_name = ttk.Entry(form_frame, width=38, font=("Segoe UI", 12))
@@ -110,13 +110,11 @@ class PizzaApp(tk.Tk):
         self.entry_name.insert(0, "Nome do Cliente")
         self.entry_name.bind("<FocusIn>", lambda e: self.clear_placeholder(self.entry_name, "Nome do Cliente"))
 
-        # Endereço
         self.entry_address = ttk.Entry(form_frame, width=38, font=("Segoe UI", 12))
         self.entry_address.pack(pady=8)
         self.entry_address.insert(0, "Endereço de Entrega")
         self.entry_address.bind("<FocusIn>", lambda e: self.clear_placeholder(self.entry_address, "Endereço de Entrega"))
 
-        # Pizza - clean radio buttons
         pizza_box = tk.LabelFrame(form_frame, text="Escolha a pizza", bg="#23272e", fg="#ffb347",
                                  font=("Segoe UI", 13, "bold"), bd=2, relief="groove", labelanchor="n")
         pizza_box.pack(fill="x", pady=(18, 5), padx=10)
@@ -125,7 +123,6 @@ class PizzaApp(tk.Tk):
                                  style="Pizza.TRadiobutton", command=self.sync_menu_selection)
             rb.pack(anchor="w", padx=18, pady=2)
 
-        # Pagamento
         pay_box = tk.LabelFrame(form_frame, text="Forma de Pagamento", bg="#23272e", fg="#ffb347",
                                font=("Segoe UI", 13, "bold"), bd=2, relief="groove", labelanchor="n")
         pay_box.pack(fill="x", pady=(18, 5), padx=10)
@@ -133,25 +130,21 @@ class PizzaApp(tk.Tk):
         ttk.Combobox(pay_box, textvariable=self.payment, values=["Cartão", "Pix", "Dinheiro"],
                      width=35, state="readonly", font=("Segoe UI", 12)).pack(pady=5, padx=10)
 
-        # Embalagem presente
         self.gift_wrap = tk.BooleanVar()
         gift_frame = tk.Frame(form_frame, bg="#23272e")
         gift_frame.pack(pady=10)
         ttk.Checkbutton(gift_frame, text="Embalagem para presente 🎁", variable=self.gift_wrap).pack()
 
-        # Botão
         btn = tk.Button(form_frame, text="Fazer Pedido", bg="#ffb347", fg="#23272e",
                         font=("Segoe UI", 15, "bold"), bd=0, relief="flat", activebackground="#ffd580",
                         command=self.go_to_kitchen, cursor="hand2")
         btn.pack(pady=30, ipadx=18, ipady=8)
 
-        # Footer
         footer = tk.Frame(frame, bg="#23272e")
         footer.pack(fill="x", side="bottom")
         tk.Label(footer, text="© 2025 Pizzaria. Todos os direitos reservados.",
                  bg="#23272e", fg="#888", font=("Segoe UI", 10)).pack(pady=6)
 
-        # Custom style for clean radio
         style = ttk.Style()
         style.configure("Pizza.TRadiobutton", background="#23272e", foreground="#f5f6fa", font=("Segoe UI", 12), indicatorcolor="#ffb347")
         style.map("Pizza.TRadiobutton",
@@ -166,7 +159,6 @@ class PizzaApp(tk.Tk):
         self.ingredient_label.config(
             text="Ingredientes: " + ", ".join(ingredientes)
         )
-        # Destaca botão selecionado
         for i, btn in enumerate(self.menu_buttons):
             if i == idx:
                 btn.config(bg="#ffb347", fg="#23272e")
@@ -185,10 +177,7 @@ class PizzaApp(tk.Tk):
             entry.delete(0, tk.END)
 
     def create_kitchen_frame(self):
-        # Layout clean, aproveitamento de tela com 3 colunas
         frame = tk.Frame(self, bg="#181a1b")
-
-        # Cardápio lateral (esquerda)
         side_menu = tk.Frame(frame, bg="#23272e", width=220)
         side_menu.grid(row=0, column=0, sticky="ns", padx=(0, 0), pady=0)
         tk.Label(side_menu, text="Cardápio", bg="#23272e", fg="#ffb347",
@@ -216,7 +205,6 @@ class PizzaApp(tk.Tk):
             )
             ing_lbl.pack(fill="x", padx=18, pady=(0, 2))
 
-        # Área central (pizza + info + botão)
         center_area = tk.Frame(frame, bg="#181a1b")
         center_area.grid(row=0, column=1, sticky="nsew", padx=0, pady=0)
         self.info_label = tk.Label(center_area, text="", bg="#23272e", fg="#ffb347",
@@ -235,12 +223,11 @@ class PizzaApp(tk.Tk):
         btn_frame = tk.Frame(center_area, bg="#181a1b")
         btn_frame.pack(fill="x", pady=(10, 20))
         tk.Button(
-            btn_frame, text="Escolher Embalagem", bg="#ffb347", fg="#23272e",
-            font=("Segoe UI", 13, "bold"), command=self.go_to_packaging,
+            btn_frame, text="Cortar Pizza", bg="#ffb347", fg="#23272e",
+            font=("Segoe UI", 13, "bold"), command=self.go_to_cutting,
             bd=0, relief="flat", activebackground="#ffd580", cursor="hand2"
         ).pack(ipadx=18, ipady=8)
 
-        # Ingredientes para arrastar (direita)
         ing_frame = tk.Frame(frame, bg="#23272e", width=220)
         ing_frame.grid(row=0, column=2, sticky="ns", padx=(0, 0), pady=0)
         tk.Label(ing_frame, text="Ingredientes", bg="#23272e", fg="#ffb347",
@@ -253,10 +240,22 @@ class PizzaApp(tk.Tk):
             lbl.pack(pady=8, padx=18)
             lbl.bind("<ButtonPress-1>", lambda e, n=name, c=color: self.add_ingredient(n, c))
 
-        # Ajuste de grid para expandir centro
         frame.grid_columnconfigure(1, weight=1)
         frame.grid_rowconfigure(0, weight=1)
+        return frame
 
+    def create_cutting_frame(self):
+        frame = tk.Frame(self, bg="#181a1b")
+        tk.Label(frame, text="Corte sua Pizza!", bg="#181a1b", fg="#ffb347", font=("Segoe UI", 18, "bold")).pack(pady=20)
+        self.cutting_canvas = Canvas(frame, width=370, height=370, bg="#f5e6ca", highlightthickness=2, highlightbackground="#ffb347")
+        self.cutting_canvas.pack(pady=10)
+        cut_frame = tk.Frame(frame, bg="#181a1b")
+        cut_frame.pack(pady=10)
+        tk.Label(cut_frame, text="Escolha em quantos pedaços cortar:", bg="#181a1b", fg="#ffb347", font=("Segoe UI", 13)).pack()
+        for n in [2, 4, 6, 8]:
+            ttk.Radiobutton(cut_frame, text=f"{n} pedaços", variable=self.slices_var, value=n).pack(side="left", padx=10)
+        tk.Button(frame, text="Cortar e Embalar", bg="#ffb347", fg="#23272e", font=("Segoe UI", 13, "bold"),
+                  command=self.go_to_packaging, bd=0, relief="flat", activebackground="#ffd580", cursor="hand2").pack(pady=20)
         return frame
 
     def create_packaging_frame(self):
@@ -264,31 +263,28 @@ class PizzaApp(tk.Tk):
         tk.Label(frame, text="Escolha a Embalagem", bg="#181a1b", fg="#ffb347", font=("Segoe UI", 18, "bold")).pack(pady=20)
         self.packaging_canvas = Canvas(frame, width=800, height=400, bg="#23272e", highlightthickness=0)
         self.packaging_canvas.pack(pady=20)
-        # Packaging areas
         self.packaging_canvas.create_rectangle(100, 100, 300, 300, fill="#ffe066", outline="#e1b12c", width=4)
         self.packaging_canvas.create_text(200, 320, text="Normal", fill="#f5f6fa", font=("Segoe UI", 14, "bold"))
         self.packaging_canvas.create_rectangle(500, 100, 700, 300, fill="#ffe066", outline="#ff69b4", width=4)
         self.packaging_canvas.create_text(600, 320, text="Presente", fill="#ff69b4", font=("Segoe UI", 14, "bold"))
-        # Pizza to drag
         self.pizza_drag = self.packaging_canvas.create_oval(350, 180, 450, 280, fill="#ffe066", outline="#e1b12c", width=8)
         self.packaging_canvas.tag_bind(self.pizza_drag, "<B1-Motion>", self.move_pizza_drag)
         self.packaging_canvas.tag_bind(self.pizza_drag, "<ButtonRelease-1>", self.check_packaging)
         self.selected_packaging = None
         return frame
 
-    def draw_base_pizza(self):
-        self.pizza_canvas.delete("all")
-        # Massa
-        self.pizza_canvas.create_oval(25, 25, 325, 325, fill="#ffe066", outline="#e1b12c", width=8)
-        # Molho (sempre presente)
-        self.pizza_canvas.create_oval(50, 50, 300, 300, fill="#e74c3c", outline="", width=0, tags="molho")
-        # Queijo (sempre presente, como linhas)
+    def draw_base_pizza(self, canvas=None):
+        if canvas is None:
+            canvas = self.pizza_canvas
+        canvas.delete("all")
+        canvas.create_oval(25, 25, 325, 325, fill="#ffe066", outline="#e1b12c", width=8)
+        canvas.create_oval(50, 50, 300, 300, fill="#e74c3c", outline="", width=0, tags="molho")
         for i in range(20):
             x1 = 60 + (i * 10) % 200
             y1 = 60 + ((i * 23) % 200)
             x2 = x1 + 40
             y2 = y1 + 10
-            self.pizza_canvas.create_line(x1, y1, x2, y2, fill="#fffbe6", width=3, tags="queijo")
+            canvas.create_line(x1, y1, x2, y2, fill="#fffbe6", width=3, tags="queijo")
 
     def go_to_kitchen(self):
         name = self.entry_name.get().strip()
@@ -307,7 +303,6 @@ class PizzaApp(tk.Tk):
             "gift_wrap": gift_wrap
         }
         info = f"Cliente: {name}\nEndereço: {address}\nPizza: {pizza}\nPagamento: {payment}\nEmbalagem presente: {'Sim' if gift_wrap else 'Não'}"
-        # Atualiza info_label na tela de montagem
         if hasattr(self, "info_label"):
             self.info_label.config(text=info)
         self.pizza_ingredients.clear()
@@ -315,7 +310,6 @@ class PizzaApp(tk.Tk):
         self.show_frame("kitchen")
 
     def add_ingredient(self, name, color):
-        # Adiciona ingrediente visualmente realista e permite arrastar/remover
         items = []
         if name == "Calabresa":
             for i in range(5):
@@ -381,10 +375,8 @@ class PizzaApp(tk.Tk):
             self.pizza_ingredients.append((name, items))
 
     def setup_drag_and_remove(self, item, name):
-        # Arrastar
         self.pizza_canvas.tag_bind(item, "<ButtonPress-1>", lambda e, i=item: self.start_drag_ingredient(e, i))
         self.pizza_canvas.tag_bind(item, "<B1-Motion>", lambda e, i=item: self.drag_ingredient(e, i))
-        # Remover com duplo clique
         self.pizza_canvas.tag_bind(item, "<Double-Button-1>", lambda e, i=item, n=name: self.remove_ingredient(i, n))
 
     def start_drag_ingredient(self, event, item):
@@ -406,19 +398,80 @@ class PizzaApp(tk.Tk):
                 new_coords.append(coords[i] + dx)
                 new_coords.append(coords[i+1] + dy)
             self.pizza_canvas.coords(item, *new_coords)
-        # Para linhas/arcos, lógica similar pode ser adicionada se necessário
 
     def remove_ingredient(self, item, name):
         self.pizza_canvas.delete(item)
-        # Remove do pizza_ingredients
         for ing in self.pizza_ingredients:
             if ing[0] == name and item in ing[1]:
                 ing[1].remove(item)
-        # Remove entradas vazias
         self.pizza_ingredients = [ing for ing in self.pizza_ingredients if ing[1]]
+
+    def go_to_cutting(self):
+        # Salva a pizza montada (snapshot dos itens do canvas)
+        self.saved_pizza_snapshot = []
+        for item in self.pizza_canvas.find_all():
+            item_type = self.pizza_canvas.type(item)
+            coords = self.pizza_canvas.coords(item)
+            opts = self.pizza_canvas.itemconfig(item)
+            self.saved_pizza_snapshot.append((item_type, coords, opts))
+        self.show_frame("cutting")
+        self.render_saved_pizza_on_cutting()
+
+    def render_saved_pizza_on_cutting(self):
+        self.draw_base_pizza(self.cutting_canvas)
+        # Redesenha os ingredientes salvos
+        if not self.saved_pizza_snapshot:
+            return
+        for item_type, coords, opts in self.saved_pizza_snapshot:
+            if item_type == "oval":
+                self.cutting_canvas.create_oval(*coords, fill=opts["fill"][-1], outline=opts["outline"][-1], width=int(opts["width"][-1]))
+            elif item_type == "arc":
+                self.cutting_canvas.create_arc(*coords, start=int(opts["start"][-1]), extent=int(opts["extent"][-1]),
+                                               style=opts["style"][-1], outline=opts["outline"][-1], width=int(opts["width"][-1]))
+            elif item_type == "polygon":
+                self.cutting_canvas.create_polygon(*coords, fill=opts["fill"][-1], outline=opts["outline"][-1], width=int(opts["width"][-1]))
+            elif item_type == "line":
+                self.cutting_canvas.create_line(*coords, fill=opts["fill"][-1], width=int(opts["width"][-1]))
+
+        self.draw_cuts_on_cutting_canvas()
+        self.slices_var.trace_add("write", lambda *args: self.draw_cuts_on_cutting_canvas())
+
+    def draw_cuts_on_cutting_canvas(self):
+        self.cutting_canvas.delete("cuts")
+        slices = self.slices_var.get() if hasattr(self, "slices_var") else 4
+        cx, cy, r = 175, 175, 150
+        import math
+        for i in range(slices):
+            angle = (360 / slices) * i
+            x = cx + r * math.cos(math.radians(angle))
+            y = cy + r * math.sin(math.radians(angle))
+            self.cutting_canvas.create_line(cx, cy, x, y, fill="#a71d31", width=4, tags="cuts")
 
     def go_to_packaging(self):
         self.show_frame("packaging")
+        self.packaging_canvas.delete("pizza_img")
+        self.draw_base_pizza(self.packaging_canvas)
+        # Redesenha ingredientes
+        if self.saved_pizza_snapshot:
+            for item_type, coords, opts in self.saved_pizza_snapshot:
+                if item_type == "oval":
+                    self.packaging_canvas.create_oval(*coords, fill=opts["fill"][-1], outline=opts["outline"][-1], width=int(opts["width"][-1]), tags="pizza_img")
+                elif item_type == "arc":
+                    self.packaging_canvas.create_arc(*coords, start=int(opts["start"][-1]), extent=int(opts["extent"][-1]),
+                                                     style=opts["style"][-1], outline=opts["outline"][-1], width=int(opts["width"][-1]), tags="pizza_img")
+                elif item_type == "polygon":
+                    self.packaging_canvas.create_polygon(*coords, fill=opts["fill"][-1], outline=opts["outline"][-1], width=int(opts["width"][-1]), tags="pizza_img")
+                elif item_type == "line":
+                    self.packaging_canvas.create_line(*coords, fill=opts["fill"][-1], width=int(opts["width"][-1]), tags="pizza_img")
+        # Desenha cortes
+        slices = self.slices_var.get() if hasattr(self, "slices_var") else 4
+        cx, cy, r = 200, 200, 150
+        import math
+        for i in range(slices):
+            angle = (360 / slices) * i
+            x = cx + r * math.cos(math.radians(angle))
+            y = cy + r * math.sin(math.radians(angle))
+            self.packaging_canvas.create_line(cx, cy, x, y, fill="#a71d31", width=4, tags="pizza_img")
 
     def move_pizza_drag(self, event):
         x, y = event.x, event.y
@@ -426,8 +479,6 @@ class PizzaApp(tk.Tk):
 
     def check_packaging(self, event):
         x, y = event.x, event.y
-        # Normal: dentro do retângulo 100,100,300,300
-        # Presente: dentro do retângulo 500,100,700,300
         if 100 < x < 300 and 100 < y < 300:
             self.selected_packaging = "normal"
             self.finish_order()
@@ -438,7 +489,6 @@ class PizzaApp(tk.Tk):
             messagebox.showinfo("Atenção", "Arraste a pizza para uma das embalagens!")
 
     def finish_order(self):
-        # Sempre inclui molho e queijo
         ingredientes = ["Molho", "Queijo"]
         for n, items in self.pizza_ingredients:
             if n not in ingredientes:
