@@ -573,7 +573,9 @@ class PizzaApp(tk.Tk):
             items=[info["pizza"]],
             address=info["address"],
             payment=info["payment"],
-            gift_wrap=gift_wrap
+            gift_wrap=gift_wrap,
+            notification_type="sms" if info["payment"] == "Pix" else "email"  # Exemplo de uso do strategy
+
         )
         msg = (
             f"🎉 Pedido Finalizado! 🎉\n\n"

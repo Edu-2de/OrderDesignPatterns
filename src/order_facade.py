@@ -1,34 +1,35 @@
 from src.order_builder import OrderBuilder
+from src.observer import OrderSubject, KitchenObserver, CustomerObserver
+from src.strategy import EmailNotification, SMSNotification
 
 class OrderProcessorFacade:
     def __init__(self):
-        self.builder = OrderBuilder()
+        self.subject = OrderSubject()
+        self.subject.attach(KitchenObserver())
+        # Por padrão, notifica cliente por email
+        self.customer_observer = CustomerObserver(EmailNotification())
+        self.subject.attach(self.customer_observer)
 
-    def criar_e_processar_pedido(self, customer, items, address, payment, gift_wrap=False, discount=None):
-        builder = (self.builder
-                   .set_customer(customer)
-                   .set_address(address)
-                   .set_payment(payment))
-        for item in items:
-            builder.add_item(item)
-        order = builder.build()
+    def set_notification_strategy(self, strategy):
+        self.customer_observer.notify_strategy = strategy
 
-        # Decorators
+    def criar_e_processar_pedido(self, customer, items, address, payment, gift_wrap=False, discount=None, notification_type="email"):
+        builder = OrderBuilder()
+        builder.set_customer(customer).set_items(items).set_address(address).set_payment(payment)
         if gift_wrap:
-            from src.order_decorator import GiftWrapDecorator
-            order = GiftWrapDecorator(order)
+            builder.set_gift_wrap()
         if discount:
-            from src.order_decorator import DiscountDecorator
-            order = DiscountDecorator(order, discount)
-
-        self._process_payment(order)
-        self._enviar_notificacao(order)
+            builder.set_discount(discount)
+        order = builder.build()
+        # Troca a estratégia se necessário
+        if notification_type == "sms":
+            self.set_notification_strategy(SMSNotification())
+        else:
+            self.set_notification_strategy(EmailNotification())
+        self.subject.notify(order)
         return order
+
 
     def _process_payment(self, order):
         # Simula processamento de pagamento
-        pass
-
-    def _enviar_notificacao(self, order):
-        # Simula envio de notificação
         pass
