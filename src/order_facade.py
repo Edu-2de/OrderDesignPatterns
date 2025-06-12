@@ -17,7 +17,7 @@ class OrderProcessorFacade:
         builder = OrderBuilder()
         builder.set_customer(customer).add_item(items).set_address(address).set_payment(payment)
         if gift_wrap:
-            builder.set_gift_wrap()
+            builder.set_gift_wrap(True)
         if discount:
             builder.set_discount(discount)
         order = builder.build()

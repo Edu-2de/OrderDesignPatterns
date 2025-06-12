@@ -15,10 +15,6 @@ class OrderBuilder:
         self.items.append(item)
         return self
 
-    # def set_items(self, items):
-    #    self.items = address
-    #    return self
-
     def set_address(self, address):
         self.address = address
         return self
@@ -26,6 +22,18 @@ class OrderBuilder:
     def set_payment(self, payment):
         self.payment = payment
         return self
+
+    # Implementar aqui a funcionalidade de presente embalado
+    def set_gift_wrap(self, isGift):
+        self.isGift = isGift
+        return self
+
+    # Implementar aqui a funcionalidade de desconto
+    def set_discount(self, discont):
+        self.discont = discont
+        return self
+
+    # Adicionar propriedades ao método construtor aqui no builder de disconto e gift
 
     def build(self):
         if not self.customer or not self.items or not self.address or not self.payment:
