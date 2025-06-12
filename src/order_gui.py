@@ -426,14 +426,14 @@ class PizzaApp(tk.Tk):
             return
         for item_type, coords, opts in self.saved_pizza_snapshot:
             if item_type == "oval":
-                self.cutting_canvas.create_oval(*coords, fill=opts["fill"][-1], outline=opts["outline"][-1], width=int(opts["width"][-1]))
+                self.cutting_canvas.create_oval(*coords, fill=opts["fill"][-1], outline=opts["outline"][-1], width=int(float(opts["width"][-1])))
             elif item_type == "arc":
                 self.cutting_canvas.create_arc(*coords, start=int(opts["start"][-1]), extent=int(opts["extent"][-1]),
-                                               style=opts["style"][-1], outline=opts["outline"][-1], width=int(opts["width"][-1]))
+                                               style=opts["style"][-1], outline=opts["outline"][-1], width=int(float(opts["width"][-1])))
             elif item_type == "polygon":
-                self.cutting_canvas.create_polygon(*coords, fill=opts["fill"][-1], outline=opts["outline"][-1], width=int(opts["width"][-1]))
+                self.cutting_canvas.create_polygon(*coords, fill=opts["fill"][-1], outline=opts["outline"][-1], width=int(float(opts["width"][-1])))
             elif item_type == "line":
-                self.cutting_canvas.create_line(*coords, fill=opts["fill"][-1], width=int(opts["width"][-1]))
+                self.cutting_canvas.create_line(*coords, fill=opts["fill"][-1], width=int(float(opts["width"][-1])))
         self.draw_cuts_on_cutting_canvas()
         self.slices_var.trace_add("write", lambda *args: self.draw_cuts_on_cutting_canvas())
 
@@ -490,22 +490,22 @@ class PizzaApp(tk.Tk):
                 if item_type == "oval":
                     item = self.packaging_canvas.create_oval(
                         *adj_coords, fill=opts["fill"][-1], outline=opts["outline"][-1],
-                        width=int(opts["width"][-1]), tags="pizza_img"
+                        width=int(float(opts["width"][-1])), tags="pizza_img"
                     )
                 elif item_type == "arc":
                     item = self.packaging_canvas.create_arc(
                         *adj_coords, start=int(opts["start"][-1]), extent=int(opts["extent"][-1]),
                         style=opts["style"][-1], outline=opts["outline"][-1],
-                        width=int(opts["width"][-1]), tags="pizza_img"
+                        width=int(float(opts["width"][-1])), tags="pizza_img"
                     )
                 elif item_type == "polygon":
                     item = self.packaging_canvas.create_polygon(
                         *adj_coords, fill=opts["fill"][-1], outline=opts["outline"][-1],
-                        width=int(opts["width"][-1]), tags="pizza_img"
+                        width=int(float(opts["width"][-1])), tags="pizza_img"
                     )
                 elif item_type == "line":
                     item = self.packaging_canvas.create_line(
-                        *adj_coords, fill=opts["fill"][-1], width=int(opts["width"][-1]), tags="pizza_img"
+                        *adj_coords, fill=opts["fill"][-1], width=int(float(opts["width"][-1])), tags="pizza_img"
                     )
                 else:
                     continue

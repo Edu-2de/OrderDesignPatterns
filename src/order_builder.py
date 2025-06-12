@@ -15,6 +15,10 @@ class OrderBuilder:
         self.items.append(item)
         return self
 
+    # def set_items(self, items):
+    #    self.items = address
+    #    return self
+
     def set_address(self, address):
         self.address = address
         return self

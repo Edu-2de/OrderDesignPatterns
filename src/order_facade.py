@@ -15,7 +15,7 @@ class OrderProcessorFacade:
 
     def criar_e_processar_pedido(self, customer, items, address, payment, gift_wrap=False, discount=None, notification_type="email"):
         builder = OrderBuilder()
-        builder.set_customer(customer).set_items(items).set_address(address).set_payment(payment)
+        builder.set_customer(customer).add_item(items).set_address(address).set_payment(payment)
         if gift_wrap:
             builder.set_gift_wrap()
         if discount:
