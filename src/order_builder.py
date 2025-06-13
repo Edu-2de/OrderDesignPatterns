@@ -24,13 +24,13 @@ class OrderBuilder:
         return self
 
     # Implementar aqui a funcionalidade de presente embalado
-    def set_gift_wrap(self, isGift):
-        self.isGift = isGift
+    def set_gift_wrap(self, gift_wrap):
+        self.gift_wrap = gift_wrap
         return self
 
     # Implementar aqui a funcionalidade de desconto
-    def set_discount(self, discont):
-        self.discont = discont
+    def set_discount(self, discount):
+        self.discount = discount
         return self
 
     # Adicionar propriedades ao método construtor aqui no builder de disconto e gift

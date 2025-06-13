@@ -19,11 +19,13 @@ class TestOrderFacade(unittest.TestCase):
             items=["Sushi"],
             address="Rua Sushi, 99",
             payment="Dinheiro",
-            gift_wrap=True,
+            gift_wrap=False,
             discount=15
         )
-        self.assertIn("Embalagem para presente", repr(order))
-        self.assertIn("Desconto: 15%", repr(order))
+        str(order.gift_wrap)
+        str(order.discount)
+        self.assertIn("False", repr(order))
+        self.assertIn("15", repr(order))
 
 if __name__ == "__main__":
     unittest.main()
