@@ -6,4 +6,7 @@ class Order:
         self.payment = payment
 
     def __repr__(self):
-        return f"Order(customer={self.customer}, items={self.items}, address={self.address}, payment={self.payment})"
+        gift_wrap = getattr(self, 'gift_wrap', False)
+        discount = getattr(self, 'discount', None)
+        return (f"Order(customer={self.customer}, items={self.items}, address={self.address}, payment={self.payment}, "
+                f"gift_wrap={gift_wrap}, discount={discount})")

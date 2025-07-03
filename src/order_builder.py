@@ -38,9 +38,13 @@ class OrderBuilder:
     def build(self):
         if not self.customer or not self.items or not self.address or not self.payment:
             raise ValueError("Pedido incompleto!")
-        return Order(
+        order = Order(
             customer=self.customer,
             items=self.items,
             address=self.address,
             payment=self.payment
         )
+
+        order.gift_wrap = getattr(self, 'gift_wrap', False)
+        order.discount = getattr(self, 'discount', None)
+        return order
